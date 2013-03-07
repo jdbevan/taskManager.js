@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Task Manager | Node.js</title>
+	<script src="jquery.min.js"></script>
+	<script src="http://code.highcharts.com/highcharts.js"></script>
+	<script src="http://code.highcharts.com/modules/exporting.js"></script>
+	<script src="http://node:8181/socket.io/socket.io.js"></script>
+</head>
+<body>
+	<div id="container" style="min-width:400px; height:400px; margin: 0 10px;">
+	</div>
+	
+	<script>
+	$(function() {
+		$(document).ready(function() {
+			Highcharts.setOptions({
+				global: {
+					useUTC: false
+				}
+			});
+		
+			var chart;
+			chart = new Highcharts.Chart({
+				chart: {
+					renderTo: 'container',
+					type: 'spline',
+					events: {
+						load: function() {
+		
+							// set up the updating of the chart each second
+							/*var series = this.series[0];
+							setInterval(function() {
+								var x = (new Date()).getTime(), // current time
+									y = Math.random();
+								series.addPoint([x, y], true, true);
+							}, 1000);*/
+						}
+					}
+				},
+				title: {
+					text: 'Task Manager'
+				},
+				xAxis: {
+					type: 'datetime',
+					tickPixelInterval: 150
+				},
+				yAxis: [{
+					min: 0,
+					title: {
+						text: 'RAM (MB)'
+					},
+					plotLines: [{
+						value: 0,
+						width: 1,
+						color: '#808080'
+					}]
+				},{
+					opposite: true,
+					min: 0,
+					max: 100,
+					title: {
+						text: 'CPU'
+					},
+					plotLines: [{
+						value: 0,
+						width: 1,
+						color: '#808080'
+					}]
+				}],
+				/*tooltip: {
+					formatter: function() {
+							return '<b>'+ this.series.name +'</b><br/>'+
+							Highcharts.dateFormat('%Y-%m-%d %H:%M:%S', this.x) +'<br/>'+
+							Highcharts.numberFormat(this.y, 2);
+					}
+				},*/
+				legend: {
+					enabled: false
+				},
+				exporting: {
+					enabled: false
+				},
+				series: [{
+					name: 'Free RAM',
+					data: []/*
+					data: (function() {
+						// generate an array of random data
+						var data = [],
+							time = (new Date()).getTime(),
+							i;
+		
+						for (i = -19; i <= 0; i++) {
+							data.push({
+								x: time + i * 1000,
+								y: Math.random()
+							});
+						}
+						return data;
+					})()*/
+				},{
+					name: 'CPU Usage',
+					data: [],
+					yAxis: 1
+				}]
+			});
+			
+			var socket = io.connect('http://node:8181/');
+			socket.on('connect', function () {
+				var first = true,
+					prevCPUs;
+				socket.on('taskmanager', function (msg) {
+					var shift = (chart.series[0].data.length > 60*5);
+					//console.log(msg);
+					if (first) {
+						chart.yAxis[0].max = msg.totalMem;
+						chart.yAxis[0].minRange = msg.totalMem;
+						prevCPUs = msg.cpus;
+						first = false;
+					} else {
+						var totalCPUs = msg.cpus.length,
+							cpuPerc = [],
+							totalPerc = {
+								user: 0,
+								nice: 0,
+								sys: 0,
+								idle: 0,
+								irq: 0
+							};
+						for (var i=0; i<totalCPUs; i++) {
+							var userDiff = msg.cpus[i].times.user - prevCPUs[i].times.user,
+								niceDiff = msg.cpus[i].times.nice - prevCPUs[i].times.nice,
+								sysDiff = msg.cpus[i].times.sys - prevCPUs[i].times.sys,
+								idleDiff = msg.cpus[i].times.idle - prevCPUs[i].times.idle,
+								irqDiff = msg.cpus[i].times.irq - prevCPUs[i].times.irq,
+								cpuTotal = userDiff + niceDiff + sysDiff + idleDiff + irqDiff,
+								per = {
+									user: Math.round( userDiff / cpuTotal * 100, 2 ),
+									nice: Math.round( niceDiff / cpuTotal * 100, 2 ),
+									sys: Math.round( sysDiff / cpuTotal * 100, 2 ),
+									idle: Math.round( idleDiff / cpuTotal * 100, 2 ),
+									irq: Math.round( irqDiff / cpuTotal * 100, 2 )
+								};
+							cpuPerc[i] = per;
+							totalPerc.user += Math.round(per.user / totalCPUs, 2);
+							totalPerc.nice += Math.round(per.nice / totalCPUs, 2);
+							totalPerc.sys += Math.round(per.sys / totalCPUs, 2);
+							totalPerc.idle += Math.round(per.idle / totalCPUs, 2);
+							totalPerc.irq += Math.round(per.irq / totalCPUs, 2);
+							console.log(totalPerc);
+						}
+						prevCPUs = msg.cpus;
+						chart.series[1].addPoint([Date.now(), totalPerc.user + totalPerc.sys], false, shift);
+					}
+					chart.series[0].addPoint([Date.now(), msg.totalMem - msg.freeMem], false, shift);
+					chart.redraw();
+				});
+			});
+			socket.on('disconnect', function() {
+				console.log("Done");
+			});
+		});
+	});
+	
+	</script>
+</body>
+</html>
