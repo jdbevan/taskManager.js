@@ -1,7 +1,7 @@
 Requires
 --------
 
-`node` and `npm`
+`node` and `npm` and a web server to serve the webpage.
 
 `npm install socket.io`
 
