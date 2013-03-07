@@ -10,6 +10,6 @@ I also setup a virtualhost http://node/ in Apache to differentiate it from http:
 
 
 What is it?
-___________
+-----------
 
 Uses [highcharts](http://highcharts.com) to plot live CPU and Memory usage obtained via WebSockets.
