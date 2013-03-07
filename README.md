@@ -13,3 +13,5 @@ What is it?
 -----------
 
 Uses [highcharts](http://highcharts.com) to plot live CPU and Memory usage obtained via WebSockets.
+
+![screenshot](https://raw.github.com/jdbevan/taskManager.js/master/Screenshot.gif)
